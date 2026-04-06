@@ -15,6 +15,11 @@
       # PATH extras
       export PATH=$PATH:$HOME/go/bin:$HOME/.local/bin:/opt/cargo/bin
 
+      # Use eza (exa fork) as default ls
+      alias ls="eza"
+      alias ll="eza -l"
+      alias la="eza -la"
+
       # ─── NixOS rebuild aliases ──────────────────────────────────────────────
       # Flake source on the Mac mount (edits on Mac are immediately visible)
       export DEVBOX_FLAKE="/Users/garethgeorge/Documents/github/devboxes/nixos-devbox"
@@ -47,15 +52,21 @@
 
   users.defaultUserShell = pkgs.zsh;
 
-  # Define the primary user
+  # Define the primary user — home must match Lima's .linux suffix to avoid
+  # conflict with the macOS mount path and so lima-init's SSH key injection
+  # survives nixos-rebuild.
   users.users.garethgeorge = {
     isNormalUser = true;
+    home = "/home/garethgeorge.linux";
     shell = pkgs.zsh;
     extraGroups = [
       "wheel"   # sudo access
       "docker"  # docker without sudo
       "kvm"     # virtualization/emulation
       "dialout" # serial ports (embedded dev)
+    ];
+    openssh.authorizedKeys.keys = [
+      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEUHg35LtvvuqCdrYvPckj3qYKy2xtGYtt7/9OJZXlgX lima"
     ];
   };
   users.groups.garethgeorge = {};

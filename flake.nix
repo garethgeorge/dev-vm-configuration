@@ -7,12 +7,17 @@
       url = "github:nixos-lima/nixos-lima";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    claude-code-nix = {
+      url = "github:sadjow/claude-code-nix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
-  outputs = { self, nixpkgs, nixos-lima, ... }:
+  outputs = { self, nixpkgs, nixos-lima, claude-code-nix, ... }:
     let
       mkSystem = system: nixpkgs.lib.nixosSystem {
         inherit system;
+        specialArgs = { inherit claude-code-nix; };
         modules = [
           nixos-lima.nixosModules.lima
           ./configuration.nix

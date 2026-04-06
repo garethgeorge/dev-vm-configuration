@@ -5,8 +5,10 @@
   # World-writable so any user can `cargo install` without sudo.
 
   environment.variables = {
-    RUSTUP_HOME = "/opt/rustup";
-    CARGO_HOME  = "/opt/cargo";
+    RUSTUP_HOME   = "/opt/rustup";
+    CARGO_HOME    = "/opt/cargo";
+    LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
+    PKG_CONFIG_PATH = "/run/current-system/sw/lib/pkgconfig:/run/current-system/sw/share/pkgconfig";
   };
 
   systemd.services.rustup-init = {
