@@ -1,4 +1,14 @@
-# NixOS devbox for gareth — powered by nixos-lima v0.0.4
+# NixOS devbox — powered by nixos-lima v0.0.4
+#
+# ── Portable config ────────────────────────────────────────────────────────
+# Set flakeHostPath to the absolute path of this repo on your host machine.
+# It will always be mounted at /flake inside the VM.
+#
+param:
+  flakeHostPath: "~/Documents/github/devboxes/nixos-devbox"
+  hostMountDir: "~"
+  guestMountDir: "/mnt/home"
+# ──────────────────────────────────────────────────────────────────────────
 #
 # Start:   limactl start nixos-devbox/nixos.yaml --name devbox
 # Shell:   limactl shell devbox
@@ -7,8 +17,7 @@
 #   limactl shell devbox -- journalctl -fu devbox-init
 #
 # Rebuild after editing configuration.nix / flake.nix on your Mac:
-#   limactl shell devbox -- sudo nixos-rebuild switch \
-#     --flake /Users/garethgeorge/Documents/github/devboxes/nixos-devbox
+#   limactl shell devbox -- sudo nixos-rebuild switch --flake /flake
 
 images:
   - location: "https://github.com/nixos-lima/nixos-lima/releases/download/v0.0.4/nixos-lima-v0.0.4-aarch64.qcow2"
@@ -22,10 +31,17 @@ memory: 8GiB
 cpus: 6
 disk: 60GiB
 
-# Only share ~/Documents/github (writable) — nixos-rebuild reads the flake
-# directly from the mounted path on subsequent rebuilds.
+# The flake repo is always mounted at /flake. The host mount dir (default: ~)
+# is mounted at guestMountDir so all your files are accessible. Lima's shell
+# path remapping translates e.g. ~/foo → /mnt/home/foo automatically.
 mounts:
-  - location: "~/Documents/github"
+  - location: "{{.Param.flakeHostPath}}"
+    mountPoint: "/flake"
+    writable: true
+    9p:
+      cache: "mmap"
+  - location: "{{.Param.hostMountDir}}"
+    mountPoint: "{{.Param.guestMountDir}}"
     writable: true
     9p:
       cache: "mmap"
@@ -69,7 +85,7 @@ provision:
       cat > /tmp/_devbox_init.sh << 'SCRIPTEOF'
       #!/bin/bash
       set -euo pipefail
-      FLAKE_SRC="/Users/garethgeorge/Documents/github/devboxes/nixos-devbox"
+      FLAKE_SRC="/flake"
       FLAKE_DIR="/etc/nixos/devbox"
       DONE_FLAG="$FLAKE_DIR/.initialized"
 
