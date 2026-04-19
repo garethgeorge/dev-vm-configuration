@@ -21,6 +21,7 @@
 
     # Version control
     git
+    git-lfs
     gh  # GitHub CLI
 
     # AI CLIs
