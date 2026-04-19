@@ -1,22 +1,47 @@
-# NixOS devbox — powered by nixos-lima v0.0.4
+# NixOS devbox (Linux NAS: dontpanic) — powered by nixos-lima v0.0.4
 #
-# ── Portable config ────────────────────────────────────────────────────────
-# Set flakeHostPath to the absolute path of this repo on your host machine.
-# It will always be mounted at /flake inside the VM.
+# ─── ⚠  SSH / MOUNT SAFETY — READ BEFORE EDITING ──────────────────────────
+# On a Linux host, 9p/virtiofs mounts shadow anything already at the guest
+# mountPoint.  If the guest mountPoint overlaps with a directory that lima /
+# NixOS writes SSH keys into, the VM boots but is UNREACHABLE and from the
+# outside looks unbootable.  Paths that MUST NOT be used (or overlapped) as
+# a guest mountPoint:
 #
-param:
-  flakeHostPath: "~/Documents/github/devboxes/nixos-devbox"
-  hostMountDir: "~"
-  guestMountDir: "/mnt/home"
+#   /                    — shadows everything
+#   /root  /root/.ssh    — root's authorized_keys that lima uses
+#   /home                — every guest user's home, including the lima user
+#   /home/<lima-user>    — the lima user's authorized_keys
+#   /etc   /etc/ssh      — sshd host keys
+#
+# Safe guest mountPoints (used below) live under /mnt/<name> or /flake, which
+# nothing inside the VM ever writes SSH material into.  When adding mounts,
+# keep them under /mnt/... unless you really know what you are doing.
+#
+# The host-side `location:` may be anything on the NAS — collisions there
+# are harmless, only the guest-side mountPoint matters for this class of
+# bug.
 # ──────────────────────────────────────────────────────────────────────────
 #
-# Start:   limactl start nixos-devbox/nixos.yaml --name devbox
+# ── Portable config ────────────────────────────────────────────────────────
+# Set flakeHostPath to the absolute path of this repo on the NAS.
+# It will always be mounted at /flake inside the VM.
+#
+# nasDataHostPath is the NAS directory you want visible inside the VM. It
+# lands at /mnt/dontpanic — deliberately NOT /home, /root, /etc, or any
+# parent of those, so guest SSH keys cannot be shadowed.
+#
+param:
+  flakeHostPath: "~/devboxes/nixos-devbox"
+  nasDataHostPath: "~"
+# ──────────────────────────────────────────────────────────────────────────
+#
+# Start:   limactl start nixos-devbox/nixos-dontpanic.yaml --name devbox
 # Shell:   limactl shell devbox
 #
 # Track first-boot setup:
 #   limactl shell devbox -- journalctl -fu devbox-init
 #
-# Rebuild after editing configuration.nix / flake.nix on your Mac:
+# Rebuild after editing configuration.nix / flake.nix on the NAS:
 #   limactl shell devbox -- sudo nixos-rebuild switch --flake /flake
 
 images:
@@ -31,17 +56,18 @@ memory: 8GiB
 cpus: 6
 disk: 60GiB
 
-# The flake repo is always mounted at /flake. The host mount dir (default: ~)
-# is mounted at guestMountDir so all your files are accessible. Lima's shell
-# path remapping translates e.g. ~/foo → /mnt/home/foo automatically.
+# ── Mounts ────────────────────────────────────────────────────────────────
+# Guest mountPoints below are all under /mnt/... or /flake — never under
+# /home, /root, or /etc.  See the SSH/MOUNT SAFETY block at the top of the
+# file before adding new entries.
 mounts:
   - location: "{{.Param.flakeHostPath}}"
     mountPoint: "/flake"
     writable: true
     9p:
       cache: "mmap"
-  - location: "{{.Param.hostMountDir}}"
-    mountPoint: "{{.Param.guestMountDir}}"
+  - location: "{{.Param.nasDataHostPath}}"
+    mountPoint: "/mnt/dontpanic"
     writable: true
     9p:
       cache: "mmap"
@@ -49,6 +75,13 @@ mounts:
     writable: true
     9p:
       cache: "mmap"
+
+# Explicitly disable lima's "mount host home at the same path in guest"
+# default — on a Linux host that path can collide with the lima user's
+# home and clobber its authorized_keys.  We mount the NAS data at
+# /mnt/dontpanic above instead.
+mountType: "9p"
+mountInotify: false
 
 portForwards:
   - proto: udp
@@ -95,7 +128,7 @@ provision:
       systemctl daemon-reload || true
       mount -a 2>/dev/null || true
 
-      echo "==> Waiting for Mac mount at $FLAKE_SRC ..."
+      echo "==> Waiting for NAS mount at $FLAKE_SRC ..."
       i=0
       while [ $i -lt 90 ]; do
         [ -f "$FLAKE_SRC/flake.nix" ] && break
@@ -104,7 +137,7 @@ provision:
       done
 
       if [ ! -f "$FLAKE_SRC/flake.nix" ]; then
-        echo "ERROR: $FLAKE_SRC/flake.nix not found after 3 min. Is ~/Documents/github mounted?"
+        echo "ERROR: $FLAKE_SRC/flake.nix not found after 3 min. Is the NAS mount (flakeHostPath) correct?"
         exit 1
       fi
 
@@ -127,7 +160,7 @@ provision:
       mkdir -p /run/systemd/system
       cat > /tmp/_devbox_init.service << 'UNITEOF'
       [Unit]
-      Description=Apply devbox NixOS flake from Mac mount
+      Description=Apply devbox NixOS flake from NAS mount
       After=local-fs.target network-online.target
       Wants=network-online.target
 
