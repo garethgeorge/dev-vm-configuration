@@ -11,10 +11,11 @@
     ncurses         # base terminfo database
 
     # Languages / runtimes
-    go
+    go_1_26
     python3
     python3Packages.pip
     nodejs  # LTS
+    pnpm
 
     # Media tools
     (ffmpeg.override { withSvtav1 = true; })

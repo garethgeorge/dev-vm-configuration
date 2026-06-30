@@ -7,7 +7,7 @@
     autosuggestions.enable = true;
     interactiveShellInit = ''
       # oh-my-posh prompt
-      eval "$(oh-my-posh init zsh --config ${pkgs.oh-my-posh}/share/oh-my-posh/themes/bubblesextra.omp.json)"
+      eval "$(oh-my-posh init zsh --config ${pkgs.oh-my-posh}/share/oh-my-posh/themes/catppuccin.omp.json)"
 
       # fzf shell integration
       source <(fzf --zsh)
