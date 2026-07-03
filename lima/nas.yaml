@@ -20,10 +20,10 @@ mounts:
   # (writable + cache settings inherited from base.yaml)
   - location: "~/Documents/github/garethgeorge/dev-vm-configuration"
     mountPoint: "/flake"
-  # Host home → /mnt/home (same guest path on every machine; formerly
-  # /mnt/dontpanic).
+  # Devbox dataset on the tank_fast pool only — deliberately NOT the host
+  # home (formerly /mnt/dontpanic).
   # ⚠ Never mount at /home, /root, /etc or any parent of those — see the
   # SSH/mount safety block in base.yaml.
-  - location: "~"
-    mountPoint: "/mnt/home"
+  - location: "/tank_fast/v/devbox"
+    mountPoint: "/mnt/devbox"
     writable: true

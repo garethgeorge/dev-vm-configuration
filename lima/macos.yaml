@@ -23,9 +23,9 @@ mounts:
   # (writable + cache settings inherited from base.yaml)
   - location: "~/Documents/github/garethgeorge/dev-vm-configuration"
     mountPoint: "/flake"
-  # Host home → /mnt/home (same guest path on every machine).
+  # Documents only — deliberately NOT the whole host home.
   # ⚠ Never mount at /home, /root, /etc or any parent of those — see the
   # SSH/mount safety block in base.yaml.
-  - location: "~"
-    mountPoint: "/mnt/home"
+  - location: "~/Documents"
+    mountPoint: "/mnt/documents"
     writable: true
