@@ -1,0 +1,25 @@
+# Devbox — x86 workstation "pop-os" (32 GB RAM host)
+#
+#   Start:      limactl start lima/workstation.yaml --name devbox
+#   Shell:      limactl shell devbox
+#   First boot: limactl shell devbox -- journalctl -fu devbox-init
+#
+# Everything shared lives in base.yaml; this file only sets what differs on
+# this machine: resources and host paths. (Linux defaults: qemu + 9p.)
+base: ./base.yaml
+
+memory: 16GiB
+cpus: 8
+disk: 120GiB
+
+mounts:
+  # This machine's checkout of the flake repo → /flake
+  # (writable + cache settings inherited from base.yaml)
+  - location: "~/Documents/github/garethgeorge/dev-vm-configuration"
+    mountPoint: "/flake"
+  # Documents only — deliberately NOT the whole host home.
+  # ⚠ Never mount at /home, /root, /etc or any parent of those — see the
+  # SSH/mount safety block in base.yaml.
+  - location: "~/Documents"
+    mountPoint: "/mnt/documents"
+    writable: true

@@ -1,0 +1,154 @@
+# Shared devbox template — do NOT start this file directly.
+# Start one of the host files instead (they inherit this via lima's `base:`
+# mechanism and add per-host mounts + resources):
+#
+#   limactl start lima/macos.yaml       --name devbox   # M4 MacBook Pro
+#   limactl start lima/workstation.yaml --name devbox   # x86 workstation
+#   limactl start lima/nas.yaml         --name devbox   # x86 NAS
+#
+# Merge semantics (lima ≥ 2.1, verified empirically on 2.1.3):
+#   • scalars (memory, cpus, disk, vmType, …): host file wins
+#   • mounts: deduplicated by mountPoint — a host-file entry with
+#     mountPoint /flake overrides the location below but inherits
+#     writable/9p settings from the entry here
+#   • provision: base scripts run before host-file scripts
+#
+# NOTE: do not add a `param:` section — limactl 2.1.3's
+# `template copy --fill` / `template yq` crash on templates containing one.
+#
+# ─── ⚠  SSH / MOUNT SAFETY — READ BEFORE ADDING MOUNTS ─────────────────────
+# Host mounts shadow whatever is already at the guest mountPoint. If a
+# mountPoint overlaps a directory that lima-init writes SSH keys into, the
+# VM boots but is UNREACHABLE. Guest mountPoints that must never be used
+# (or overlapped):
+#
+#   /                    — shadows everything
+#   /root  /root/.ssh    — root's authorized_keys
+#   /home  /home/<user>  — the devbox user's authorized_keys
+#   /etc   /etc/ssh      — sshd host keys and authorized_keys.d
+#
+# Safe mountPoints live under /mnt/<name> or /flake — nothing in the VM
+# writes SSH material there. Only the guest-side mountPoint matters; the
+# host-side location can be anything.
+# ────────────────────────────────────────────────────────────────────────────
+
+# The v0.2.x images are the pairing for limactl 2.1.x (older images lack the
+# instance-ID ssh-ready handshake and the 2.1.3 guestagent changes, so the VM
+# never reports ready). Keep in step with the nixos-lima input in flake.nix.
+minimumLimaVersion: "2.1.0"
+images:
+  - location: "https://github.com/nixos-lima/nixos-lima/releases/download/v0.2.1/nixos-lima-v0.2.1-aarch64.qcow2"
+    arch: "aarch64"
+    digest: "sha512:748c723b69dbdec40a9acaf78cc9070ae784dcb64b0856ab906efdac822d9abcc65565b8f8dfa4cf8b49cc6c12c372072e83bb5ed9247330a7c22675d9e141ce"
+  - location: "https://github.com/nixos-lima/nixos-lima/releases/download/v0.2.1/nixos-lima-v0.2.1-x86_64.qcow2"
+    arch: "x86_64"
+    digest: "sha512:636c9c24d7aea340c808e72802cd05589d18c1bbeda45242e3c4725cdfdcc497cfdfd4dfecd76e4be7b8de3a688a1046f269c072bce487c0b06a60515262995e"
+
+# Same guest account on every machine, regardless of the host username.
+# Both fields must match modules/user.nix. home is pinned because lima 2.x
+# defaults to /home/<user>.guest — if it drifted from the nix-declared home,
+# lima-init would inject SSH keys into the wrong directory (lockout).
+user:
+  name: "garethgeorge"
+  home: "/home/garethgeorge.linux"
+
+mounts:
+  # The flake repo, always at /flake — host files override `location` with
+  # this machine's checkout path (same mountPoint → entries merge, host file
+  # wins, writable/9p inherited from here). Mounted, not copied: edit on the
+  # host, then re-apply inside the VM with `nrs`.
+  - location: "~/Documents/github/garethgeorge/dev-vm-configuration"
+    mountPoint: "/flake"
+    writable: true
+    9p:
+      cache: "mmap"
+  - location: "/tmp/lima"
+    writable: true
+    9p:
+      cache: "mmap"
+
+portForwards:
+  # Don't intercept host DHCP packets (NixOS guest quirk, nixos-lima#50)
+  - proto: udp
+    guestPort: 68
+    guestIP: 0.0.0.0
+    ignore: true
+  # Common dev ports
+  - guestPort: 3000    # Node.js, Next.js, React
+  - guestPort: 4200    # Angular
+  - guestPort: 5000    # Flask, general
+  - guestPort: 5173    # Vite
+  - guestPort: 8000    # Django, Python HTTP
+  - guestPort: 8080    # General HTTP dev
+  - guestPort: 8888    # Jupyter
+  - guestPort: 9090    # Prometheus, general
+
+containerd:
+  system: false
+  user: false
+
+provision:
+  # lima-init runs this on EVERY boot (lima has no first-boot-only mode),
+  # before the host mounts are active and while /etc is read-only (NixOS
+  # manages it). Strategy:
+  #   • guard on a done-flag so reboots are a no-op
+  #   • write the real init script to /var/lib/devbox (writable ext4)
+  #   • write a one-shot unit to /run/systemd/system (tmpfs, always writable)
+  #   • start it --no-block; it waits for /flake itself, then applies the
+  #     flake via the same scripts/apply.sh used by the interactive aliases
+  - mode: system
+    script: |
+      #!/bin/bash
+      set -euo pipefail
+      [ -f /var/lib/devbox/.initialized ] && { echo "devbox-init: already done"; exit 0; }
+      mkdir -p /var/lib/devbox
+
+      cat > /var/lib/devbox/init.sh << 'SCRIPTEOF'
+      #!/usr/bin/env bash
+      set -euo pipefail
+      [ -f /var/lib/devbox/.initialized ] && { echo "devbox-init: already done"; exit 0; }
+
+      # lima-init has appended the host mounts to /etc/fstab by now, but may
+      # not have activated them yet
+      systemctl daemon-reload || true
+      mount -a 2>/dev/null || true
+
+      echo "==> waiting for host mount at /flake ..."
+      for _ in $(seq 90); do
+        [ -f /flake/flake.nix ] && break
+        sleep 2
+      done
+      if [ ! -f /flake/flake.nix ]; then
+        echo "ERROR: /flake/flake.nix not found after 3 min — is the /flake mount location in this host's lima yaml correct?" >&2
+        exit 1
+      fi
+
+      echo "==> applying flake (first build may take several minutes) ..."
+      bash /flake/scripts/apply.sh switch
+
+      touch /var/lib/devbox/.initialized
+      echo "==> devbox-init complete"
+      SCRIPTEOF
+      chmod +x /var/lib/devbox/init.sh
+
+      mkdir -p /run/systemd/system
+      cat > /run/systemd/system/devbox-init.service << 'UNITEOF'
+      [Unit]
+      Description=Apply devbox NixOS flake from /flake host mount
+      After=local-fs.target network-online.target
+      Wants=network-online.target
+
+      [Service]
+      Type=oneshot
+      RemainAfterExit=yes
+      TimeoutStartSec=1800
+      Environment=PATH=/run/current-system/sw/bin:/run/current-system/sw/sbin:/usr/bin:/bin
+      ExecStart=/var/lib/devbox/init.sh
+      StandardOutput=journal+console
+      StandardError=journal+console
+      UNITEOF
+
+      systemctl daemon-reload
+      # --no-block: lima-init must not wait on us; init.sh has its own wait
+      # loop for the mount.
+      systemctl start --no-block devbox-init.service

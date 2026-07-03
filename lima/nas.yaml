@@ -1,0 +1,29 @@
+# Devbox — x86 NAS "dontpanic" (32 GB RAM host)
+#
+#   Start:      limactl start lima/nas.yaml --name devbox
+#   Shell:      limactl shell devbox
+#   First boot: limactl shell devbox -- journalctl -fu devbox-init
+#
+# Everything shared lives in base.yaml; this file only sets what differs on
+# this machine: resources and host paths. (Linux defaults: qemu + 9p.)
+base: ./base.yaml
+
+# Note: equal to host RAM — qemu only touches guest memory on demand, but a
+# full-tilt build inside the VM can pressure the host; drop to 24GiB if the
+# NAS starts swapping.
+memory: 32GiB
+cpus: 8
+disk: 120GiB
+
+mounts:
+  # This machine's checkout of the flake repo → /flake
+  # (writable + cache settings inherited from base.yaml)
+  - location: "~/Documents/github/garethgeorge/dev-vm-configuration"
+    mountPoint: "/flake"
+  # Host home → /mnt/home (same guest path on every machine; formerly
+  # /mnt/dontpanic).
+  # ⚠ Never mount at /home, /root, /etc or any parent of those — see the
+  # SSH/mount safety block in base.yaml.
+  - location: "~"
+    mountPoint: "/mnt/home"
+    writable: true

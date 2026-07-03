@@ -1,0 +1,31 @@
+# Devbox — macOS host (ARM M4 MacBook Pro)
+#
+#   Start:      limactl start lima/macos.yaml --name devbox
+#   Shell:      limactl shell devbox
+#   First boot: limactl shell devbox -- journalctl -fu devbox-init
+#
+# Everything shared lives in base.yaml; this file only sets what differs on
+# this machine: resources and host paths.
+base: ./base.yaml
+
+# lima's macOS default is vmType vz + virtiofs mounts, which the v0.2.x
+# nixos-lima images support. If the VM fails to boot or mounts misbehave,
+# fall back to qemu + 9p by uncommenting:
+# vmType: "qemu"
+# mountType: "9p"
+
+memory: 8GiB
+cpus: 6
+disk: 100GiB
+
+mounts:
+  # This machine's checkout of the flake repo → /flake
+  # (writable + cache settings inherited from base.yaml)
+  - location: "~/Documents/github/garethgeorge/dev-vm-configuration"
+    mountPoint: "/flake"
+  # Host home → /mnt/home (same guest path on every machine).
+  # ⚠ Never mount at /home, /root, /etc or any parent of those — see the
+  # SSH/mount safety block in base.yaml.
+  - location: "~"
+    mountPoint: "/mnt/home"
+    writable: true

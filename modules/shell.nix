@@ -20,59 +20,25 @@
       alias ll="eza -l"
       alias la="eza -la"
 
-      # ─── NixOS rebuild aliases ──────────────────────────────────────────────
-      # Flake source on the Mac mount (edits on Mac are immediately visible)
-      export DEVBOX_FLAKE="/Users/garethgeorge/Documents/github/devboxes/nixos-devbox"
+      # ─── NixOS rebuild helpers ──────────────────────────────────────────────
+      # The flake repo is host-mounted at /flake on every machine; edit it on
+      # the host (or in the VM) and re-apply. apply.sh picks the right flake
+      # attr for this arch and sudo's as needed.
+      alias nrs="/flake/scripts/apply.sh switch"
+      alias nrt="/flake/scripts/apply.sh test"
+      alias nrb="/flake/scripts/apply.sh build"
+      alias nrdry="/flake/scripts/apply.sh dry-activate"
 
-      # Rebuild and switch to new configuration
-      alias nrs="sudo nixos-rebuild switch --flake \$DEVBOX_FLAKE"
-
-      # Rebuild, switch, and show what changed
-      alias nrsd="sudo nixos-rebuild switch --flake \$DEVBOX_FLAKE && nix-diff /run/current-system"
-
-      # Test build without switching (useful for catching errors)
-      alias nrt="sudo nixos-rebuild test --flake \$DEVBOX_FLAKE"
-
-      # Build only (no switch, no boot entry)
-      alias nrb="sudo nixos-rebuild build --flake \$DEVBOX_FLAKE"
-
-      # Show current vs new generation diff before switching
-      alias nrdry="nixos-rebuild dry-activate --flake \$DEVBOX_FLAKE 2>&1 | head -50"
-
-      # Quick edit helpers (opens in $EDITOR on the Mac-mounted files)
-      alias nconf="$EDITOR \$DEVBOX_FLAKE/configuration.nix"
-      alias nflake="$EDITOR \$DEVBOX_FLAKE/flake.nix"
-      alias npkgs="$EDITOR \$DEVBOX_FLAKE/modules/packages.nix"
-      alias nshell="$EDITOR \$DEVBOX_FLAKE/modules/shell.nix"
+      # Quick edit helpers (expand $EDITOR at use time)
+      alias nconf='$EDITOR /flake/configuration.nix'
+      alias nflake='$EDITOR /flake/flake.nix'
+      alias npkgs='$EDITOR /flake/modules/packages.nix'
+      alias nshell='$EDITOR /flake/modules/shell.nix'
 
       # Garbage collection
       alias ngc="sudo nix-collect-garbage -d"
     '';
   };
-
-  users.defaultUserShell = pkgs.zsh;
-
-  # Define the primary user — home must match Lima's .linux suffix to avoid
-  # conflict with the macOS mount path and so lima-init's SSH key injection
-  # survives nixos-rebuild.
-  users.users.garethgeorge = {
-    isNormalUser = true;
-    home = "/home/garethgeorge.linux";
-    shell = pkgs.zsh;
-    extraGroups = [
-      "wheel"   # sudo access
-      "docker"  # docker without sudo
-      "kvm"     # virtualization/emulation
-      "dialout" # serial ports (embedded dev)
-    ];
-    openssh.authorizedKeys.keys = [
-      "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEUHg35LtvvuqCdrYvPckj3qYKy2xtGYtt7/9OJZXlgX lima"
-    ];
-  };
-  users.groups.garethgeorge = {};
-
-  # Enable docker
-  virtualisation.docker.enable = true;
 
   # Shell-related packages
   environment.systemPackages = with pkgs; [

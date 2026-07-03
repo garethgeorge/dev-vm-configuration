@@ -1,14 +1,20 @@
-{ config, pkgs, lib, modulesPath, ... }:
+{ pkgs, lib, modulesPath, ... }:
 {
   imports = [
+    # nixos-lima's exported flake module only ships lima-init (cidata user +
+    # mounts + guest agent). The boot/filesystem config its images are built
+    # with lives in nixos-lima's lima.nix, which is NOT exported — so it is
+    # replicated below and must stay compatible with the image release pinned
+    # in lima/base.yaml.
     (modulesPath + "/profiles/qemu-guest.nix")
+    ./modules/user.nix
     ./modules/shell.nix
     ./modules/rust.nix
     ./modules/packages.nix
     ./modules/vim.nix
+    ./modules/nix-ld.nix
   ];
 
-  # ─── Lima / NixOS base ────────────────────────────────────────────────────
   nixpkgs.config.allowUnfree = true;
 
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
@@ -18,92 +24,11 @@
   services.openssh.enable = true;
   security.sudo.wheelNeedsPassword = false;
 
-  # Enable nix-ld for running unpatched binaries
-  programs.nix-ld.enable = true;
-  programs.nix-ld.libraries = with pkgs; [
-    # C/C++ runtime
-    stdenv.cc.cc.lib
-    glibc
+  # lima-init creates/adjusts the lima user imperatively at every boot;
+  # nixos-rebuild must never wipe it or login breaks.
+  users.mutableUsers = true;
 
-    # Compression
-    zlib
-    zstd
-    bzip2
-    xz
-    lz4
-
-    # Crypto / TLS
-    openssl
-    libgcrypt
-    gnutls
-
-    # Networking
-    curl
-    nghttp2
-    libssh2
-
-    # System / IPC
-    systemd
-    dbus
-    libcap
-    acl
-    attr
-    util-linux.lib
-    pam
-
-    # Data formats
-    expat
-    libxml2
-    sqlite
-    icu
-
-    # Math / science
-    libffi
-
-    # Graphics / GUI (headless-safe subset)
-    xorg.libX11
-    xorg.libXext
-    xorg.libXrender
-    xorg.libXi
-    xorg.libXcursor
-    xorg.libXrandr
-    xorg.libXfixes
-    xorg.libXinerama
-    xorg.libXcomposite
-    xorg.libXdamage
-    xorg.libXtst
-    xorg.libxcb
-    xorg.libICE
-    xorg.libSM
-    libGL
-    libdrm
-    mesa
-    vulkan-loader
-    fontconfig
-    freetype
-    cairo
-    pango
-    gdk-pixbuf
-    glib
-    gtk3
-    libxkbcommon
-    wayland
-
-    # Audio
-    alsa-lib
-    libpulseaudio
-
-    # Readline / ncurses
-    readline
-    ncurses
-
-    # Misc
-    libuuid
-    libusb1
-    libidn2
-    libgpg-error
-  ];
-
+  # ─── Boot / filesystems (mirrors nixos-lima's lima.nix) ──────────────────
   boot = {
     kernelParams = [ "console=tty0" ];
     kernelPackages = pkgs.linuxPackages_latest;
@@ -115,7 +40,7 @@
   };
 
   fileSystems."/boot" = {
-    device = lib.mkForce "/dev/vda1";
+    device = lib.mkForce "/dev/vda1"; # /dev/disk/by-label/ESP
     fsType = "vfat";
   };
   fileSystems."/" = {
@@ -125,5 +50,6 @@
     options = [ "noatime" "nodiratime" "discard" ];
   };
 
-  system.stateVersion = "25.11";
+  # Matches the NixOS release the v0.2.x nixos-lima images are built from.
+  system.stateVersion = "26.05";
 }

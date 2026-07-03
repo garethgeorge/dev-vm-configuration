@@ -86,10 +86,10 @@
     bash
 
     # Language servers
-    nil                                    # Nix
-    rust-analyzer                          # Rust
-    gopls                                  # Go
-    nodePackages.typescript-language-server # TypeScript/JavaScript
-    pyright                                # Python
+    nil                          # Nix
+    rust-analyzer                # Rust
+    gopls                        # Go
+    typescript-language-server   # TypeScript/JavaScript
+    pyright                      # Python
   ];
 }
