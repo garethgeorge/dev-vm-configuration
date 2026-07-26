@@ -16,12 +16,12 @@ base: ./base.yaml
 
 memory: 8GiB
 cpus: 6
-disk: 100GiB
+disk: 128GiB
 
 mounts:
   # This machine's checkout of the flake repo → /flake
   # (writable + cache settings inherited from base.yaml)
-  - location: "~/Documents/github/garethgeorge/dev-vm-configuration"
+  - location: "~/Documents/github/devboxes/nixos-devbox"
     mountPoint: "/flake"
   # Documents only — deliberately NOT the whole host home.
   # ⚠ Never mount at /home, /root, /etc or any parent of those — see the

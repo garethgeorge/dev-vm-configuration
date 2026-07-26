@@ -28,6 +28,7 @@
     # AI CLIs
     claude-code-nix.packages.${stdenv.hostPlatform.system}.default  # `claude` command
     gemini-cli   # Google Gemini CLI
+    opencode     # opencode AI coding agent
 
     # C / C++ toolchain
     gcc
