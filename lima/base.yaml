@@ -52,6 +52,9 @@ user:
   name: "garethgeorge"
   home: "/home/garethgeorge.linux"
 
+ssh:
+  forwardAgent: true
+
 mounts:
   # The flake repo, always at /flake — host files override `location` with
   # this machine's checkout path (same mountPoint → entries merge, host file

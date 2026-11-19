@@ -88,6 +88,8 @@
 
     # Language servers
     nil                          # Nix
+    nixd                         # Nix (feature-rich LSP used by Antigravity/VS Code)
+    nixfmt                       # Nix formatter (RFC 166 style)
     rust-analyzer                # Rust
     gopls                        # Go
     typescript-language-server   # TypeScript/JavaScript

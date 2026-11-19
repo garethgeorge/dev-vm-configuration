@@ -18,6 +18,8 @@
     openssl
     libgcrypt
     gnutls
+    krb5
+    libsecret
 
     # Networking
     curl

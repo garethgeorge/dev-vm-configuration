@@ -13,6 +13,8 @@
     ./modules/packages.nix
     ./modules/vim.nix
     ./modules/nix-ld.nix
+    ./modules/antigravity.nix
+    ./modules/ghidra.nix
   ];
 
   nixpkgs.config.allowUnfree = true;
@@ -22,6 +24,9 @@
 
   services.lima.enable = true;
   services.openssh.enable = true;
+  # Note: Do NOT enable services.envfs — lima-init runs `ln -fs ... /bin/bash`
+  # with `set -e` before writing SSH keys and /etc/fstab mounts, which fails if
+  # envfs mounts over /bin.
   security.sudo.wheelNeedsPassword = false;
 
   # lima-init creates/adjusts the lima user imperatively at every boot;
@@ -32,6 +37,7 @@
   boot = {
     kernelParams = [ "console=tty0" ];
     kernelPackages = pkgs.linuxPackages_latest;
+    kernel.sysctl."fs.inotify.max_user_watches" = 524288;
     loader.grub = {
       device = "nodev";
       efiSupport = true;
