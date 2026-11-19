@@ -2,7 +2,7 @@
 {
   # ─── Rust: shared system-wide rustup installation ─────────────────────────
   # Toolchains live in /opt/rustup; compiled binaries in /opt/cargo/bin.
-  # World-writable so any user can `cargo install` without sudo.
+  # Writable by the `users` group so any user can `cargo install` without sudo.
 
   environment.variables = {
     RUSTUP_HOME   = "/opt/rustup";
@@ -34,8 +34,11 @@
         ${pkgs.rustup}/bin/rustup toolchain install stable --no-self-update
         ${pkgs.rustup}/bin/rustup default stable
         touch /opt/rustup/.initialized
-        # Make readable + writable so any user can cargo install
-        chmod -R a+rwX /opt/rustup /opt/cargo
+        # Group-writable for `users` (setgid dirs so new files keep the
+        # group) so any login user can cargo install — but not world-writable.
+        chgrp -R users /opt/rustup /opt/cargo
+        chmod -R ug+rwX,o+rX,o-w /opt/rustup /opt/cargo
+        find /opt/rustup /opt/cargo -type d -exec chmod g+s {} +
       '';
     };
   };

@@ -7,7 +7,7 @@
     ghostty.terminfo
     kitty.terminfo
     wezterm.terminfo
-    foot            # includes terminfo
+    foot.terminfo
     ncurses         # base terminfo database
 
     # Languages / runtimes

@@ -22,12 +22,29 @@
   nix.settings.experimental-features = [ "nix-command" "flakes" ];
   nix.settings.trusted-users = [ "@wheel" ];
 
+  # Keep the VM disk from filling with old generations / duplicate store paths.
+  nix.settings.auto-optimise-store = true;
+  nix.gc = {
+    automatic = true;
+    dates = "weekly";
+    options = "--delete-older-than 14d";
+  };
+
   services.lima.enable = true;
   services.openssh.enable = true;
   # Note: Do NOT enable services.envfs — lima-init runs `ln -fs ... /bin/bash`
   # with `set -e` before writing SSH keys and /etc/fstab mounts, which fails if
   # envfs mounts over /bin.
   security.sudo.wheelNeedsPassword = false;
+
+  # limactl ≥ 2.2 with ssh.forwardAgent symlinks the forwarded agent socket to
+  # /run/host-services/ssh-auth.sock — as the guest user, without sudo.
+  # nixos-lima's lima-init doesn't create that directory, and without it every
+  # `limactl start` ends "degraded" with exit 1. (The very first boot of a
+  # fresh VM still does: the stock image runs before this flake is applied.)
+  systemd.tmpfiles.rules = [
+    "d /run/host-services 0755 garethgeorge users -"
+  ];
 
   # lima-init creates/adjusts the lima user imperatively at every boot;
   # nixos-rebuild must never wipe it or login breaks.

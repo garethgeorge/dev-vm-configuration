@@ -1,4 +1,4 @@
-# Devbox — x86 NAS "dontpanic" (32 GB RAM host)
+# Devbox — x86 NAS "dontpanic" (64 GB RAM host)
 #
 #   Start:      limactl start lima/nas.yaml --name devbox
 #   Shell:      limactl shell devbox
@@ -8,7 +8,7 @@
 # this machine: resources and host paths. (Linux defaults: qemu + 9p.)
 base: ./base.yaml
 
-# Note: equal to host RAM — qemu only touches guest memory on demand, but a
+# Note: half of host RAM — qemu only touches guest memory on demand, but a
 # full-tilt build inside the VM can pressure the host; drop to 24GiB if the
 # NAS starts swapping.
 memory: 32GiB

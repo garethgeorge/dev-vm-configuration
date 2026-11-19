@@ -34,6 +34,9 @@ let
 
   ghidraMcpHeadlessScript = pkgs.writeShellScriptBin "ghidra-mcp-headless" ''
     set -euo pipefail
+    # The guest uid follows the host uid (501 on macOS, 1000 on the Linux
+    # hosts), so derive the runtime dir instead of hardcoding it.
+    export XDG_RUNTIME_DIR="''${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
     GHIDRA_HOME="${pkgs.ghidra}/lib/ghidra"
     MCP_JAR="${ghidraMcpExtension}/lib/ghidra/Ghidra/Extensions/GhidraMCP/lib/GhidraMCP-${ghidraMcpVersion}.jar"
 
@@ -69,7 +72,6 @@ in
     path = with pkgs; [ openjdk21 coreutils bash ];
     environment = {
       HOME = "/home/garethgeorge.linux";
-      XDG_RUNTIME_DIR = "/run/user/501";
       JAVA_OPTS = "-Xmx2g -XX:+UseG1GC";
       GHIDRA_MCP_ALLOW_SCRIPTS = "1";
     };

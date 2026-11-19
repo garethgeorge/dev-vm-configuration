@@ -51,5 +51,22 @@ if [ ! -e "$FLAKE_DIR/flake.nix" ]; then
   $SUDO systemctl restart lima-init
 fi
 
+# nixos-rebuild also exits non-zero when the new config activated fine but a
+# unit failed to (re)start — typically one of the network-dependent one-shot
+# installers (rustup-init, antigravity-init, ghidra-mcp-bridge-init), which
+# retry on the next boot anyway. That is not a failed apply: if the running
+# system IS the config we just built, warn and succeed, so first-boot
+# provisioning doesn't redo the whole apply on every boot.
+if [ "$status" -ne 0 ] && { [ "$ACTION" = "switch" ] || [ "$ACTION" = "test" ]; }; then
+  want="$($SUDO nix --extra-experimental-features 'nix-command flakes' build --no-link --print-out-paths \
+    "path:$FLAKE_DIR#nixosConfigurations.$ATTR.config.system.build.toplevel" 2>/dev/null || true)"
+  if [ -n "$want" ] && [ "$(readlink -f /run/current-system)" = "$want" ]; then
+    echo "==> WARNING: nixos-rebuild exited $status, but the new configuration is active." >&2
+    echo "    Units that failed to start:" >&2
+    systemctl --failed --no-legend --plain >&2 || true
+    status=0
+  fi
+fi
+
 rm -f "$0"
 exit "$status"

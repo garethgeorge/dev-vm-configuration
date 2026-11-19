@@ -14,13 +14,15 @@ modules/
   nix-ld.nix            libraries for running unpatched binaries
   rust.nix              system-wide rustup in /opt
   vim.nix               vim + LSP
+  antigravity.nix       Antigravity CLI (`agy`) install + user lingering
+  ghidra.nix            Ghidra + GhidraMCP extension, headless MCP server
 scripts/
   apply.sh              THE rebuild entry point (first boot + interactive)
 lima/
   base.yaml             everything shared: image, user, mounts, provisioning
   macos.yaml            M4 MacBook Pro   (arm, vz+virtiofs)
   workstation.yaml      x86 workstation  (16 GB host → 8 GiB VM)
-  nas.yaml              x86 NAS          (32 GB host → 16 GiB VM)
+  nas.yaml              x86 NAS          (64 GB host → 32 GiB VM)
 ```
 
 ## Starting a VM
