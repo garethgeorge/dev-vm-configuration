@@ -18,7 +18,7 @@ disk: 120GiB
 mounts:
   # This machine's checkout of the flake repo → /flake
   # (writable + cache settings inherited from base.yaml)
-  - location: "~/Documents/github/garethgeorge/dev-vm-configuration"
+  - location: "/home/dontpanic/dev-vm-configuration"
     mountPoint: "/flake"
   # Devbox dataset on the tank_fast pool only — deliberately NOT the host
   # home (formerly /mnt/dontpanic).
